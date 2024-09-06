@@ -9,7 +9,7 @@ import {ERC20VotesFake} from "./helpers/ERC20VotesFake.sol";
 - The purpose of this PoC is to demonstrate how to set up a 100k token transfers before running a test!
 */
 
-contract SpokeVoteAggregatorTest is Test {
+contract VoteTest is Test {
   ERC20VotesFake public token;
 
 
@@ -23,14 +23,15 @@ contract SpokeVoteAggregatorTest is Test {
   function beforeTestSetup(
         bytes4 testSelector
     ) public returns (bytes[] memory beforeTestCalldata) {
-        if (testSelector == CastVote.testDoSUsersFromVoting_PoC.selector) {
+        if (testSelector == CastVote.testDoHugeAmountOfTransfersBeforeRunningTest.selector) {
             beforeTestCalldata = new bytes[](25);
             // beforeTestCalldata[0] = abi.encodePacked(this.deployToken.selector);
             beforeTestCalldata[0] = abi.encodeWithSignature("_mintAndDelegate(address,uint256)", legitUser, _amount);
             beforeTestCalldata[1] = abi.encodeWithSignature("_mintAndDelegate(address,uint256)", maliciousUser, _amount);
             beforeTestCalldata[2] = abi.encodeWithSignature("_mintAndDelegate(address,uint256)", maliciousUser2, 1e18);
+            beforeTestCalldata[3] = abi.encodeWithSignature("_mintAndDelegate(address,uint256)", maliciousUser2, 1e18);
 
-            beforeTestCalldata[3] = abi.encodePacked(this.createProposal.selector);
+            // beforeTestCalldata[3] = abi.encodePacked(this.createProposal.selector);
 
             beforeTestCalldata[4] = abi.encodeWithSignature("testTransfer(address,address)", maliciousUser2, legitUser);
             beforeTestCalldata[5] = abi.encodeWithSignature("testTransfer(address,address)", maliciousUser2, legitUser);
@@ -84,7 +85,7 @@ contract SpokeVoteAggregatorTest is Test {
 }
 
 
-contract CastVote {
+contract CastVote is VoteTest {
 
   function testDoHugeAmountOfTransfersBeforeRunningTest() public
   {
