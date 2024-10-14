@@ -4,10 +4,7 @@ import {EnumerableSetUpgradeable} from "./EnumerableSetUpgradeable.sol";
 
 import {Test, console2} from "forge-std/Test.sol";
 
-
-//@audit => Verify that querying a position bigger than the length of the set doesn't cause the tx to revert!
-
-contract QueryingSets {
+contract SimpleDelegations {
 
   using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
@@ -32,6 +29,7 @@ contract QueryingSets {
   //@audit-issue => The problem is that when there are undelegated delegatees, they will be removed from the delegator in the `_claim()`, which makes the `unclaimed.delegatees` AddressSet lenght to shrink, which unintentionally causes the for loop to do less iterations than the original amount of delegatees at the begining of the call!
   function claimAll() external returns (uint256 reward) {
     for (uint256 i = 0; i < unclaimed[msg.sender].delegatees.length(); i++) {
+      console2.log("delegatees.lenght: ", unclaimed[msg.sender].delegatees.length());
       address delegatee = unclaimed[msg.sender].delegatees.at(i);
       // console2.log("i: ", i);
       console2.log("delegatee: ", delegatee);
@@ -45,7 +43,7 @@ contract QueryingSets {
     }
   }
 
-  //@audit-recommendation
+  //@audit-recommendation => This would be the fix for the first bug!
   // function claimAll() external returns (uint256 reward) {
   //   uint256 totalDelegatees = unclaimed[msg.sender].delegatees.length();
   //   address[] memory delegatees = new address[](totalDelegatees);
@@ -72,7 +70,9 @@ contract QueryingSets {
     
     reward = 10;
 
+    //@audit-issue => Removes an undelegated delegatee from the delegator's delegatees!
     if (unclaimed[delegator].undelegated[delegatee]) {
+      //@audit-issue => The `unclaimed[delegator].delegatees.length()` shrinks, causing the for loop to not iterate over all the delegatees!
       unclaimed[delegator].delegatees.remove(delegatee);
       delete unclaimed[delegator].undelegated[delegatee];
     }
@@ -83,25 +83,26 @@ contract QueryingSets {
   }
 }
 
-contract QueryingSetsTests is Test {
-  function test_QueryingSetInPositionGreatherThanSetLength() public {
-    QueryingSets queryingContract = new QueryingSets();
+contract BugWhenClaimingAllRewards is Test {
+  function test_claimingAllRewardsReproducingBug() public {
+    SimpleDelegations delegations = new SimpleDelegations();
 
-    queryingContract.addDelegatee(address(1));
-    queryingContract.addDelegatee(address(2));
-    queryingContract.addDelegatee(address(3));
-    // queryingContract.addDelegatee(address(4));
-    // queryingContract.addDelegatee(address(5));
+    delegations.addDelegatee(address(1));
+    delegations.addDelegatee(address(2));
+    delegations.addDelegatee(address(3));
+    // delegations.addDelegatee(address(4));
+    // delegations.addDelegatee(address(5));
 
-    queryingContract.undelegate(address(1));
-    queryingContract.undelegate(address(3));
-    // queryingContract.undelegate(address(4));
+    delegations.undelegate(address(1));
+    delegations.undelegate(address(3));
+    // delegations.undelegate(address(4));
 
-    uint256 rewards = queryingContract.claimAll();
+    //@audit => Should claim 30 of rewards! There are 3 delegatees and each delegatee gives 10 of rewards
+    uint256 rewards = delegations.claimAll();
     console2.log("Total rewards: ", rewards);
 
     console2.log("delegatees list after claiming");
-    address[] memory delegatees = queryingContract.getDelegatees();
+    address[] memory delegatees = delegations.getDelegatees();
     for(uint i = 0; i < delegatees.length; i++) {
       console2.log("delegatee: ", delegatees[i]);
     }
