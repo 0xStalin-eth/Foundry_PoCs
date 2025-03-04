@@ -45,6 +45,5 @@ contract ReadOnlyReentrancy is Test {
 
       console.log("Vault Final Balance:  %e", address(victimVault).balance);
       console.log("Attacker Final Balance: %e", address(attackerContract).balance);
-
     }
 }
